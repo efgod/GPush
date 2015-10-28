@@ -1,0 +1,13 @@
+req:
+{
+	"sn":"sn1234",
+	"to_id":"to_id",
+	"payload":"payload"
+}
+
+resp:
+{
+	"sn":"sn1234",
+	"status":0,
+	"message":"success!"
+}
