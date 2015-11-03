@@ -5,7 +5,6 @@
 #include "type_map.h"
 #include "sess_cache.h"
 #include "ef_crypt.h"
-#include "token_check.h"
 #include "connect_server.h"
 #include "base/ef_base64.h"
 #include "base/ef_aes.h"
@@ -136,29 +135,6 @@ int CliCon::updateSession(){
 }
 
 
-int CliCon::checkToken(const string& token){
-	TokenChecker* ck = m_serv->getTokenChecker();
-	if(!ck){
-		return INNER_ERROR;
-	}
-
-	int ret = 0;
-	map<string, string> infos;	
-
-
-	ret = ck->checkToken(token, infos);
-
-	if(ret < 0){
-		return ret;
-	}	
-
-	if(infos["uid"] != m_sess.id()){
-		return -3;
-	}
-
-
-	return 0;
-}
 
 int CliCon::checkType(int type){
 	//do not check rpc_client;
@@ -181,8 +157,7 @@ int CliCon::handleLoginRequest(const head& h, const string& req,
 	string sessid;
 	string enctk;
 
-	if(!lgreq.ParseFromArray(req.data()+sizeof(h), 
-		req.size()-sizeof(h))){
+	if(!lgreq.ParseFromArray(req.data(), req.size())){
 		ret = INPUT_FORMAT_ERROR;
 		goto exit;
 	}
@@ -196,33 +171,6 @@ int CliCon::handleLoginRequest(const head& h, const string& req,
 	m_sess.set_type(lgreq.type());
 	m_sess.set_consvid(m_serv->getConfig().ID);
 	m_sess.set_version(lgreq.version());
-
-	if(m_conf->Enc && !lgreq.has_token()){
-
-		ret = CHECK_TOKEN_FAIL;
-		goto exit;
-	}
-
-	if(m_conf->Enc){
-		enctk = lgreq.token();
-
-		ret = ef::decrypt(enctk, tk);
-
-		if(ret < 0){
-			ret = DECRYPT_FAIL;
-			goto exit;
-		}
-
-		//check token
-		ret = checkToken(tk);
-
-		if(ret < 0){
-			ret = CHECK_TOKEN_FAIL;
-			goto exit; 
-
-		}
-
-	}
 
 	ret = checkType(lgreq.type());
 
@@ -319,47 +267,11 @@ exit:
 int CliCon::sendCmd(int cmd, const string& body){
 	string req_enc;
 	string msg;
-	if((cmd == PUSH_REQ || cmd == PUSH_RESP) 
-		&& body.size()){
-		int ret = encodeBody(body.data(), body.size(), req_enc);
-		if(ret < 0){
-			return ret;
-		}
-	}else{
-		req_enc = body;
-	}
 	head h;
 	h.cmd = cmd;
 	h.magic = MAGIC_NUMBER;
-	constructPacket(h, req_enc, msg);
+	constructPacket(h, body, msg);
 	return sendMessage(msg);
-}
-
-int CliCon::decodeBody(const char* encbody, int bodylen, string& body){
-	int ret = 0;
-	if(m_conf->Enc){
-		//string hexbody;
-		//hexbody.resize(bodylen * 2);
-		//bytesToHexs(encbody, bodylen, 
-		//	(char*)hexbody.data(), hexbody.size());
-		ret = aesDecrypt(encbody, 
-			bodylen, m_key, body);	
-	}else{
-		body.append(encbody, bodylen);
-	}
-	return ret;
-}
-
-
-int CliCon::encodeBody(const char* body, int bodylen, string& encbody){
-	int ret = 0;
-	if(m_conf->Enc){
-		ret = aesEncrypt(body, 
-			bodylen, m_key, encbody);	
-	}else{
-		encbody.append(body, bodylen);
-	}
-	return ret;
 }
 
 int CliCon::handlePushRequest(const head& h, const string& req, 
@@ -376,7 +288,6 @@ int CliCon::handlePushRequest(const head& h, const string& req,
 	PushRequest svreq;
 	string newreq;
 	//decode req
-	string req_dec;
 	string key;
 	string id;
 
@@ -384,15 +295,7 @@ int CliCon::handlePushRequest(const head& h, const string& req,
 	svresp.set_to_sessid("NULL");
 	svresp.set_sn("null");
 
-	ret = decodeBody(req.data() + sizeof(h), req.size() - sizeof(h), req_dec);
-
-	if(ret < 0){
-		ret = DECRYPT_FAIL;
-		goto exit;
-	}
-
-	if(!svreq.ParseFromArray(req_dec.data(), 
-		req_dec.size())){
+	if(!svreq.ParseFromArray(req.data(), req.size())){
 		ret = INPUT_FORMAT_ERROR;
 		goto exit;
 	}
@@ -472,16 +375,7 @@ int32 CliCon::handlePushResponse(const head& h,
 	EventLoop* l = NULL;
 	SendMsgOp* op = NULL;
 
-
-	ret = decodeBody(req.data() + sizeof(h), req.size() - sizeof(h), req_dec);
-
-	if(ret < 0){
-		ret = DECRYPT_FAIL;
-		goto exit;
-	}
-
-
-	if(!svresp.ParseFromArray(req_dec.data(), req_dec.size())){
+	if(!svresp.ParseFromArray(req.data(), req.size())){
 		ret = INPUT_FORMAT_ERROR;	
 		goto exit;
 	}
@@ -532,15 +426,15 @@ int CliCon::handlePacket(const string& req){
 	try{
 		switch(h.cmd){
 		case LOGIN_REQ:
-			ret = handleLoginRequest(h, req, resp);		
+			ret = handleLoginRequest(h, req.substr(sizeof(h)), resp);		
 			break;
 		case PUSH_REQ:
 			updateSession();
-			ret = handlePushRequest(h, req, resp);
+			ret = handlePushRequest(h, req.substr(sizeof(h)), resp);
 			break;
 		case PUSH_RESP:
 			updateSession();
-			ret = handlePushResponse(h, req);
+			ret = handlePushResponse(h, req.substr(sizeof(h)));
 			break;
 		case KEEPALIVE_REQ:
 			updateSession();

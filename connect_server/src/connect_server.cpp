@@ -3,7 +3,6 @@
 #include "log_init.h"
 #include "client_conn.h"
 #include "sess_cache.h"
-#include "token_check.h"
 #include "type_map.h"
 #include "zk_client.h"
 #include "data_watcher.h"
@@ -33,11 +32,24 @@ static void output_zklog(void* par, const string& l){
 }
 
 
+int ConnectServer::initZk(const std::string& zkUrl){
+	m_zkc = new ZKClient();
+	if(m_zkc->init(zkUrl) < 0){
+		delete m_zkc;
+		return -5;
+	}
+
+	return 0;
+}
+
+
 
 int ConnectServer::initLog(){
 	logInit(m_conf.LogConfig);
 	initStatistic(output_statistic, this);
-
+	setNetLogName("ConnectNet");
+	setNetLogPath(m_conf.NetLogPath);
+	setNetLogLevel(m_conf.NetLogLevel);
 	return 0;
 }
 
@@ -51,18 +63,6 @@ int ConnectServer::initCompent(){
 	if(ret < 0){
 		return -3;
 	}
-	
-	m_tkck = TokenChecker::instance();
-				
-	if(!m_tkck){
-		return -1;
-	}
-
-	ret = m_tkck->init(m_zkc, m_conf.TokenKeyPath, 3600 * 24 * 14);
-	
-	if(ret < 0){
-		return ret;
-	}
 
 	return ret;
 }
@@ -75,19 +75,9 @@ int ConnectServer::freeCompent(){
 		m_zksvnd = NULL;
 	}
 
-	if(m_zkcnf){
-		delete m_zkcnf;
-		m_zkcnf = NULL;
-	}
-
 	if(m_zkc){
 		delete m_zkc;
 		m_zkc = NULL;
-	}
-
-	if(m_tkck){
-		TokenChecker::destroy();
-		m_tkck = NULL;
 	}
 
 	return 0;
@@ -96,7 +86,6 @@ int ConnectServer::freeCompent(){
 int ConnectServer::startListen(){	
 	int ret = 0;
 
-	setNetLogName(m_conf.NetLogName);	
 	m_serv.setEventLoopCount(m_conf.ThreadCount);
 	ret = m_serv.init();
 
@@ -105,11 +94,11 @@ int ConnectServer::startListen(){
 	}
 
 
-	std::map<int, CliConfig>::iterator itor = m_conf.CliConfigs.begin();
+	std::vector<CliConfig>::iterator itor = m_conf.CliConfigs.begin();
 
 	for(; itor != m_conf.CliConfigs.end(); ++itor){
 
-		CliConfig& cliconf = itor->second;
+		CliConfig& cliconf = *itor;
 
 		CliConFactory* cfac = new CliConFactory(this, &cliconf);
 		CDispatcher* cdisp = new CDispatcher(this, &cliconf);
@@ -129,11 +118,11 @@ int ConnectServer::stopListen(){
 	int ret = 0;
 
 
-	std::map<int, CliConfig>::iterator itor = m_conf.CliConfigs.begin();
+	std::vector<CliConfig>::iterator itor = m_conf.CliConfigs.begin();
 
 	for(; itor != m_conf.CliConfigs.end(); ++itor){
 
-		CliConfig& cliconf = itor->second;
+		CliConfig& cliconf = *itor;
 
 		ret = m_serv.stopListen(cliconf.ListenPort);
 		if(ret < 0){
@@ -167,23 +156,33 @@ int ConnectServer::stop(){
 	return 0;
 }
 
-int ConnectServer::init(const string& zkurl, const string& path, 
-		const std::string& statuspath, int id, const string& logconf){
-	int ret = 0;
 
-	m_conf.LogConfig = logconf;	
+int ConnectServer::init(const std::string& conf_file){
 
-	initLog();
+	ServerConfig conf;
+	int ret = conf.init(conf_file);
 
-	ret = initConfigByZK(zkurl, path, id);
 	if(ret < 0){
-		cout << "initConfigByZK fail!" << endl;
+		std::cout << "config init fail, ret:" << ret << std::endl;
 		return ret;
 	}
 
-	ret = initStatusNode(statuspath, id);
-	if(ret < 0){
-		cout << "initStatusNode fail!" << endl;
+	ret = init(conf);
+
+	return ret;
+}
+
+
+int ConnectServer::init(const ServerConfig& conf){
+	int ret = 0;
+
+	m_conf = conf;
+
+	initLog();
+
+	ret = initZk(m_conf.ZkUrl);
+	if (ret < 0){
+		std::cout << "initZk fail!" << std::endl;
 		return ret;
 	}
 
@@ -194,7 +193,19 @@ int ConnectServer::init(const string& zkurl, const string& path,
 		return ret;
 	}
 
+
 	ret = startListen();
+	if (ret < 0){
+		std::cout << "startListen fail!" << std::endl;
+		return ret;
+	}
+	
+
+	ret = initStatusNode(m_conf.StatusZkPath, m_conf.ID);
+	if(ret < 0){
+		cout << "initStatusNode fail!" << endl;
+		return ret;
+	}
 
 	return ret;
 	
@@ -212,53 +223,19 @@ const ServerConfig& ConnectServer::getConfig() const{
 	return m_conf;
 }
 
-
-int ConnectServer::ConfUpdateCallback(int ver, const Json::Value& notify){
-
-	return loadConfig(notify);
-
-}
-
-int ConnectServer::initConfigByZK(const string& zkurl, 
-	const string& path, int id){
-
-        m_zkc = new ZKClient();
-        if(m_zkc->init(zkurl) < 0){
-                delete m_zkc;
-                return -5;
-        }	
-
-	m_zkc->setLogFn(this, output_zklog);
-
-	m_conf.ID = id;	
-	m_zkcnf = new JsonWatcher<ConnectServer>(this, &ConnectServer::ConfUpdateCallback);
-
-	if(!m_zkcnf){
-		return -10;
-	}
-
-	m_zkcnf->init(m_zkc, path);
-
-	m_jsonconf = m_zkcnf->getJsonData();
-
-	int ret = loadConfig(m_jsonconf);
-
-	return ret;
-}
-
 int ConnectServer::initStatusNode(const std::string& statuspath, int id){
 
 	m_status.ID = id;
 
 	m_status.autoSetIPs(true);
 
-	std::map<int, CliConfig>::iterator itor = m_conf.CliConfigs.begin();
+	std::vector<CliConfig>::iterator itor = m_conf.CliConfigs.begin();
 
 	for(; itor != m_conf.CliConfigs.end(); ++itor){
 		PortConfig p;
-		p.Port = itor->second.ListenPort;
-		p.MaxType = itor->second.MaxType;
-		p.MinType = itor->second.MinType;	
+		p.Port = itor->ListenPort;
+		p.MaxType = itor->MaxType;
+		p.MinType = itor->MinType;	
 		m_status.Ports.push_back(p);
 	}
 
@@ -274,63 +251,6 @@ int ConnectServer::initStatusNode(const std::string& statuspath, int id){
 }
 
 
-
-int ConnectServer::loadConfig(const Json::Value& root){
-
-	std::cout << root.toStyledString() << std::endl;
-			
-	const Json::Value& ThreadCountV = root["ThreadCount"];
-
-	if(!ThreadCountV.isInt()){
-		cout << "get ThreadCount fail!\n";
-		return -1;
-	}
-
-	m_conf.ThreadCount = ThreadCountV.asInt();
-
-	const Json::Value& NetLogNameV = root["NetLogName"];
-
-	m_conf.NetLogName = NetLogNameV.asString();
-
-	if(!NetLogNameV.isString()){
-		cout << "get NetLogName fail!\n";
-		return -2;
-	}
-
-	const Json::Value& MaxTypev = root["MaxType"];
-	
-	if(!MaxTypev.isInt()){
-		cout << "get MaxType fail!\n";
-		return -4;
-	}
-
-
-	m_conf.SessCacheConfig = root["SessCacheConfig"];
-
-	m_conf.MaxType = MaxTypev.asInt();
-
-
-	const Json::Value& CliConfigsV = root["CliConfigs"];
-
-	if(!CliConfigsV.isArray()){
-		cout << "get CliConfigs fail!\n";
-		return -3;
-	}
-
-	const Json::Value& TokenKeyPathv = root["TokenKeyPath"];
-
-	if(!TokenKeyPathv.isString()){
-		cout << "get TokenKeyPath fail!\n";
-		return -4;
-	}
-
-	m_conf.TokenKeyPath = TokenKeyPathv.asString();
-
-
-	int ret = loadCliConfigs(CliConfigsV);
-
-	return ret;	
-}
 
 int ConnectServer::reportStatus(){
 	if(!m_zksvnd){
@@ -351,77 +271,5 @@ int ConnectServer::reportStatus(){
 }
 
 
-	
-int ConnectServer::loadCliConfigs(const Json::Value& v){
-
-
-	for(Json::Value::const_iterator itr = v.begin(); 
-		itr != v.end(); ++itr){
-
-		const Json::Value& cf = *itr;	
-		
-		const Json::Value& Encv = cf["Enc"];
-
-		if(!Encv.isInt()){
-			return -1;
-		}
-		
-		const Json::Value& AliveMsv = cf["AliveMs"];
-		if(!AliveMsv.isInt()){
-			return -1;
-		}
-
-		const Json::Value& MinTypev = cf["MinType"];		
-		if(!MinTypev.isInt()){
-			return -1;
-		}
-
-		const Json::Value& MaxTypev = cf["MaxType"];
-		if(!MaxTypev.isInt()){
-			return -1;
-		}
-		
-		const Json::Value& ListenPortv = cf["ListenPort"];
-		if(!ListenPortv.isInt()){
-			return -1;
-		}
-
-		const Json::Value& MaxReqQueSizev = cf["MaxReqQueSize"];
-		if(!MaxReqQueSizev.isInt()){
-			return -1;
-		}
-
-		const Json::Value& MaxPackCntPerMinv = cf["MaxPackCntPerMin"];
-		if(!MaxPackCntPerMinv.isInt()){
-			return -1;
-		}
-
-		const Json::Value& StartThreadIdxv = cf["StartThreadIdx"];
-		if(!StartThreadIdxv.isInt()){
-			return -1;
-		}
-
-		const Json::Value& ThreadCntv = cf["ThreadCnt"];		
-		if(!ThreadCntv.isInt()){
-			return -1;
-		}
-
-		CliConfig c;
-		c.Enc = Encv.asInt();
-		c.AliveMs = AliveMsv.asInt();
-		c.MinType = MinTypev.asInt();
-		c.MaxType = MaxTypev.asInt();
-		c.ListenPort = ListenPortv.asInt();
-		c.MaxReqQueSize = MaxReqQueSizev.asInt();
-		c.MaxPackCntPerMin = MaxPackCntPerMinv.asInt();
-		c.StartThreadIdx = StartThreadIdxv.asInt();
-		c.ThreadCnt = ThreadCntv.asInt();
-	
-		m_conf.CliConfigs[c.ListenPort] = c;	
-			
-	}
-
-	return 0;
-}
 
 };

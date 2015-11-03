@@ -270,6 +270,11 @@ public:
 		int32 ret = 0;
 		std::string resp_body;
 		int64 n = gettime_ms();
+		if(sockGetPending(m_fd) <= 12){
+			LOG_OUT << "handle_resp fail, server close\n";
+			return -1;
+		}
+
 		while(sockGetPending(m_fd) >= 12){
 			ret = recv_resp(cmd, resp_body);
 			if(ret < 0){
@@ -310,13 +315,7 @@ public:
 		cmd = htonl(h.cmd);
 		m_status = CLIENT_STATUS_INIT;
 					
-		encresp = str.substr(12);
-
-		if(m_key.size() &&(cmd == 200 || cmd == 201)){
-			ef::aesDecrypt(encresp, m_key, resp);
-		}else{
-			resp = encresp;
-		}
+		resp = str.substr(12);
 
 		return  ret;
 	}
@@ -324,12 +323,7 @@ public:
 	int32   send_req(int cmd, const std::string& req){
 		std::string msg;
 		std::string encreq;
-		if(m_key.size() &&(cmd == 200 || cmd == 201)){
-			ef::aesEncrypt(req, m_key, encreq);	
-		}else{
-			encreq = req;
-		}
-		const_req(cmd, msg, encreq);
+		const_req(cmd, msg, req);
 		
 		int ret = send(m_fd, msg.data(), msg.size(), 0);
 		if(ret = 0)
@@ -468,7 +462,7 @@ public:
 	int32 run(int32 argc, const char** argv){
 		m_run = true;
 		const int32 events_on_loop = 128;
-		const int32 slp_ms = 10;
+		const int32 slp_ms = 50;
 		int32 cnt = 0;
 		int32 kpcnt = 0;
 		int32 idx = 0;

@@ -41,43 +41,30 @@ Json::Value getJsonArray(const std::vector<std::string>& v){
 static void printHelpInfo(){
 	std::cout << 	"-h				help\n"
 			"-d				daemon\n"
-//			"-t	[file/zookeeper]	config type\n"
-			"-p	<path>			config path\n"
-			"-s	<statuspath>		status path\n"
-//			"-c	<file>			config file\n"
-			"-z	<url>			zookeeper url\n"
-			"-i	<id>			id\n"
-			"-l	<logconfig>		log config file\n"
+			"-c	<config>		config\n"
+			"-s	<so path>		so path\n"
+	
 		<< std::endl;
 
 }
 
+
 int main(int argc, char* const* argv){
 
-	const char* short_options = "hdt:p:s:c:z:i:l:";
+
+	const char* short_options = "hdc:s:";
 
 	const struct option long_options[] = {
 		{  "help",      0,   NULL,   'h'  },
 		{  "daemon",      0,   NULL,   'd'  },
-//		{  "configtype",    1,   NULL,   't'  },
-		{  "configpath",    1,   NULL,   'p'  },
-		{  "statuspath",    1,   NULL,   's'  },
-//		{  "configfile",    1,   NULL,   'c'  },
-		{  "zookeeper",   1,   NULL,   'z'  },
-		{  "id",   1,   NULL,   'i'  },
-		{  "logconfig",   1,   NULL,   'l'  },
+		{  "config",    1,   NULL,   'c'  },
 		{  NULL,      0,    NULL,   0  }
 	};
 
 	int c;
 
-//	std::string configtype;
-//	std::string configfile;
-	std::string configpath;
-	std::string statuspath;
-	std::string zkurl;
-	std::string id;
-	std::string logconfig;
+	std::string type;
+	std::string config;
 	bool dm = false;
 
 	while((c = getopt_long (argc, argv, short_options, long_options, NULL)) != -1){
@@ -90,35 +77,16 @@ int main(int argc, char* const* argv){
 			dm = true;
 			break;
 
-//		case 't':
-//			configtype = optarg;
-//			break;
-
-		case 'p':
-			configpath = optarg;
+		case 'c':
+			config = optarg;
 			break;		
 		
-		case 's':
-			statuspath = optarg;
-			break;
-
-//		case 'c':
-//			configfile = optarg;
-//			break;
-
-		case 'z':
-			zkurl = optarg;
-			break;
-		
-		case 'i':
-			id = optarg;
-			break;
-
-		case 'l':
-			logconfig = optarg;
-			break;	
-
 		}			
+	}
+
+	if(!config.size()){
+		printHelpInfo();
+		return -1;
 	}
 	
 	
@@ -140,13 +108,7 @@ int main(int argc, char* const* argv){
 	gim::ConnectServer s;
 	g_pdb = &s;
 
-	if(!zkurl.size() || !configpath.size() || !statuspath.size() 
-		|| !logconfig.size() || !id.size()){
-		printHelpInfo();
-		return -1;
-	}
-
-	ret = s.init(zkurl, configpath, statuspath, atoi(id.data()), logconfig);
+	ret = s.init(config);
 
 	if(ret < 0){
 		std::cout << "ConnectServer init fail\n";

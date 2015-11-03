@@ -5,7 +5,7 @@
 #include "net/ef_connection.h"
 #include "net/ef_operator.h"
 #include "net/ef_acceptor.h"
-#include "client_config.h"
+#include "server_config.h"
 #include "sess_cache.h"
 #include <string>
 
@@ -82,11 +82,7 @@ private:
 	int delSession();
 	int updateSession();
 
-	int decodeBody(const char* encbody, int bodylen, std::string& body);
-	int encodeBody(const char* body, int bodylen, std::string& encbody);
-	
 	int checkType(int type);
-	int checkToken(const std::string& tk);
 	int checkReqQue(int reqcnt, int respcnt);
 
 	ConnectServer* m_serv;

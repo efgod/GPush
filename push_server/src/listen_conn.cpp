@@ -132,12 +132,14 @@ int ListenCon::handlePushReqeust(const string& req){
 		Sess&  ss = sv[n];
 		ss.consvid();
 
+		preq.set_to_sessid(ss.sessid());
+
 		int ret = sendToServer(ss.consvid(), preq);
 		if (ret >= 0){
 			++count;
 		}
 
-		logicInfo << "<action:sendJ2C> <sn:" << preq.sn() 
+		logicInfo << "<action:sendJ2C> <sn:" << preq.sn() << "> <to_sessid:" << ss.sessid() 
 			<< "> <id:" << id << "> <type:" << preq.type() << "> <ret:" << ret
 			<< "> <req_payload:" << preq.payload() << ">";
 	}
