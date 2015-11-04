@@ -370,7 +370,6 @@ int32 CliCon::handlePushResponse(const head& h,
 	int32 ret = 0;
 	int32 conid = 0;
 	string id; 
-	string req_dec;
 	PushResponse svresp;
 	EventLoop* l = NULL;
 	SendMsgOp* op = NULL;
@@ -393,7 +392,7 @@ int32 CliCon::handlePushResponse(const head& h,
 		goto exit;
 	}
 	//???
-	op = new SendMsgOp(conid, PUSH_RESP, req_dec);
+	op = new SendMsgOp(conid, PUSH_RESP, req);
 	ret = l->addAsynOperator(op);
 exit:
 	ALogError("ConnectServer")  
