@@ -22,9 +22,7 @@ public class GMsgBroadcastReceiver extends BroadcastReceiver  {
 	@Override
 	public void onReceive(final Context context, Intent intent) {
         try {
-            String action = intent.getAction();
             String msg = intent.getStringExtra("msg");
-            Log.d("fxxxios", "MsgReceiver OnReceive action:" + action + " msg:" + msg);
             
             try {
 	        	JSONObject j = new JSONObject (msg);
@@ -36,12 +34,10 @@ public class GMsgBroadcastReceiver extends BroadcastReceiver  {
 	        	notify.data = j;
 	        	publisher.publish(notify);
 	        } catch (JSONException e){
-	        	Log.e("fxxxios", e.toString());
-	            e.printStackTrace();
+	        	Log.e("gpushdemo", e.toString());
 	        }
         } catch (Exception ex) {
-        	Log.e("fxxxios", ex.toString());
-            ex.printStackTrace();
+        	Log.e("gpushdemo", ex.toString());
         }
     }
 }
