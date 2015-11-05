@@ -1,0 +1,8 @@
+project(clientsdktest)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+add_definitions("-Wall -pg -g")
+include_directories(../include)
+link_directories(../lib) 
+link_libraries(libclientsdk.so pthread)
+file(GLOB_RECURSE SRC_LIST src/*.cpp)
+add_executable(bin/clientsdktest ${SRC_LIST})

@@ -70,8 +70,8 @@ namespace gim
 	{
 		SDK_LOG(LOG_LEVEL_TRACE, "eventloop run");
 		struct timeval c_tvmax ;
-		c_tvmax.tv_sec = LONG_MAX;
-		c_tvmax.tv_usec = LONG_MAX;
+		c_tvmax.tv_sec = (~0UL);
+		c_tvmax.tv_usec = (~0UL);
 		struct timeval tv;
 		struct timeval* ptv;
 		fd_set fds;

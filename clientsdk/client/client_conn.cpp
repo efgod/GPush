@@ -14,10 +14,10 @@ namespace gim
 {
 	CliConn::CliConn(EventLoop* lp)
 		:m_fd(INVALID_SOCKET),
-		 m_keepalive_timeout(KEEPALIVE_TIMEOUT),
-		m_login_time(0),
-		m_loginStatus(STATUS_DISCONNECT),
 		m_devicetype(0),
+		 m_keepalive_timeout(KEEPALIVE_TIMEOUT),
+		m_loginStatus(STATUS_DISCONNECT),
+		m_login_time(0),
 		m_evlp(lp)
 	{
 		assert(m_evlp);
