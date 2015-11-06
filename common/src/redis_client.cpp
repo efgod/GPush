@@ -234,7 +234,7 @@ static size_t _argSize(const vector<string> &value)
 
 static size_t _argSize(const map<string, string> &value)
 {
-        return value.size() * 2;
+        return value.size() << 1;
 }
 
 static void _fillData(int &curPos, const char **argv, size_t  *argvLen,
