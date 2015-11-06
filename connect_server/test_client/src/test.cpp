@@ -471,7 +471,6 @@ public:
 		int64 lastms = gettime_ms();
 		while(m_run){	
 			srand(lastms);
-			int64 n = gettime_ms();
 			if(m_con_map.size() < m_max_cnt)
 				connect_server();
 			int32 nfds = epoll_wait(m_epoll_fd, events, events_on_loop, slp_ms);
@@ -490,6 +489,7 @@ public:
 					delete c;
 				}
 			}
+			int64 n = gettime_ms();
 			int32 sz = m_con_map.size();
 			int32 m = (n - lastms) * sz / KEEPALIVE_SPAN;
 			for(int l = 0; kpcnt < m && l < 10 && l < m && l < sz; ++l){

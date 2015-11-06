@@ -27,17 +27,6 @@ static void signal_handler(int sig)
 
 }
 
-
-Json::Value getJsonArray(const std::vector<std::string>& v){
-	Json::Value a(Json::arrayValue);
-
-	for(size_t i = 0; i < v.size(); ++i){
-		a.append(v[i]);
-	}
-
-	return a;
-}
-
 static void printHelpInfo(){
 	std::cout << 	"-h				help\n"
 			"-d				daemon\n"

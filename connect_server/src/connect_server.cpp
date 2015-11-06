@@ -34,6 +34,7 @@ static void output_zklog(void* par, const string& l){
 
 int ConnectServer::initZk(const std::string& zkUrl){
 	m_zkc = new ZKClient();
+	m_zkc->setLogFn(this, output_zklog);
 	if(m_zkc->init(zkUrl) < 0){
 		delete m_zkc;
 		return -5;
