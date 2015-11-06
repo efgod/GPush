@@ -1,7 +1,6 @@
 package com.gim;
 
 public class GMsg {
-
 	public static final int GIM_EVTYPE_LOGIN_OK = 0;
 	public static final int GIM_EVTYPE_LOGIN_FAIL = 1;
 	public static final int GIM_EVTYPE_LOGOUT = 2;

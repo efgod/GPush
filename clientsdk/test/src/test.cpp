@@ -27,7 +27,6 @@ static void signal_handler(int sig)
 
 }
 namespace gim{
-	
 	  void logprint(LogLevel level, const char* logbuf){
         return;
     }
@@ -45,15 +44,15 @@ int main(int argc, char* const* argv){
 		std::cout << "args [ip] [port] [uid]!" << std::endl;
 		return -1;
 	}
-	
+
 	std::string ip = argv[1];
 	int port = atoi(argv[2]);
 	std::string uid = argv[3];
-	
-	
+
+
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGCHLD, SIG_IGN);
-	signal(SIGTSTP, SIG_IGN); 
+	signal(SIGTSTP, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
 	signal(SIGHUP,  SIG_IGN);
@@ -64,9 +63,9 @@ int main(int argc, char* const* argv){
 	if(c.init() < 0){
 		std::cout << "client init error" << std::endl;
 	}
-	
+
 	c.setKeepaliveTimeout(30); //30ms
-	
+
 	c.login(ip, port, uid, "1.0.0");
 	while(g_run){
 		std::cout << "running!\n";

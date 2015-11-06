@@ -32,8 +32,8 @@ public class MainActivity extends Activity implements Observer {
 		GClientBox
 				.instance()
 				.getClient()
-				.login(Config.srvip, Config.srvport, Config.cliversion,
-						Config.cid);
+				.login(Config.SRVIP, Config.SRVPORT, Config.CLIVERSION,
+						Config.UID);
 		listView = new ListView(this);
 		list = new LinkedList<String>();
 		list.add("GPush Demo");
@@ -46,7 +46,7 @@ public class MainActivity extends Activity implements Observer {
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		GClientBox.instance().getClient().logout(Config.cid);
+		GClientBox.instance().getClient().logout(Config.UID);
 		GClientBox.instance().getPublisher().removeOb(this);
 	}
 
