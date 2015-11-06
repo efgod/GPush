@@ -38,7 +38,7 @@ using namespace gim;
 #define STATUS_OK (0)
 #define STATUS_SOCKET_ERR (-1)
 #define STATUS_OTHER_ERR  (-1000)
-#define KEEPALIVE_SPAN	  (60 * 1000 * 3)
+#define KEEPALIVE_SPAN	  (300 * 1000)
 
 enum{
 	CLIENT_STATUS_INIT = 0,
@@ -52,8 +52,7 @@ enum{
 
 class Client{
 public:
-	Client(int32 fd = -1):m_fd(fd), m_sn(0), 
-		m_status(CLIENT_STATUS_INIT){
+	Client(int32 fd = -1):m_fd(fd), m_sn(0){
 	}
 
 	~Client(){
@@ -147,8 +146,8 @@ public:
 	int32	keepAlive(){
 		int32 ret = 0;
 		if(gettime_ms() - m_send_time < KEEPALIVE_SPAN){
-			LOG_OUT << "cid:" << m_cid
-				<< "keepAlive not send!" << std::endl;
+		//	LOG_OUT << "cid:" << m_cid
+		//		<< "keepAlive not send!" << std::endl;
 			return	0;
 		}
 		ret = send_req(0, "");
@@ -250,7 +249,6 @@ public:
 		ret = send_req(201, body);
 		if(ret == 0)
 			++recv_req_success_count;
-		m_status = CLIENT_STATUS_INIT;
 		return ret;	
 	}
 
@@ -270,7 +268,7 @@ public:
 		int32 ret = 0;
 		std::string resp_body;
 		int64 n = gettime_ms();
-		if(sockGetPending(m_fd) <= 12){
+		if(sockGetPending(m_fd) < 12){
 			LOG_OUT << "handle_resp fail, server close\n";
 			return -1;
 		}
@@ -313,7 +311,6 @@ public:
 		total_spend_time += n - m_send_time;
 		head h = *(head*)&str[0];
 		cmd = htonl(h.cmd);
-		m_status = CLIENT_STATUS_INIT;
 					
 		resp = str.substr(12);
 
@@ -330,7 +327,6 @@ public:
 			return -1;
 		m_send_time = gettime_ms();
 		++total_req;
-		m_status = CLIENT_STATUS_WAIT_RESP;
 		return  ret;
 	}	
 
@@ -360,10 +356,6 @@ public:
 		return m_fd;
 	}
 
-	bool isIdle(){
-		return m_status == CLIENT_STATUS_INIT;
-	}
-
 	int32 localPort(){
 		return 	getlocalport();
 	}
@@ -376,7 +368,6 @@ private:
 	std::string	m_token;
 	int32		m_sn;
 	int64 		m_send_time;
-	int32		m_status;
 	std::string	m_sessid;
 	std::string	m_key;
 	SOCKET	m_fd;
@@ -462,15 +453,11 @@ public:
 	int32 run(int32 argc, const char** argv){
 		m_run = true;
 		const int32 events_on_loop = 128;
-		const int32 slp_ms = 50;
-		int32 cnt = 0;
-		int32 kpcnt = 0;
-		int32 idx = 0;
+		const int32 slp_ms = 20;
 		int32 kplvidx = 0;
 		struct epoll_event events[events_on_loop];
 		int64 lastms = gettime_ms();
 		while(m_run){	
-			srand(lastms);
 			if(m_con_map.size() < m_max_cnt)
 				connect_server();
 			int32 nfds = epoll_wait(m_epoll_fd, events, events_on_loop, slp_ms);
@@ -491,16 +478,12 @@ public:
 			}
 			int64 n = gettime_ms();
 			int32 sz = m_con_map.size();
-			int32 m = (n - lastms) * sz / KEEPALIVE_SPAN;
-			for(int l = 0; kpcnt < m && l < 10 && l < m && l < sz; ++l){
+			for(int l = 0; l < 20 && l < sz; ++l){
 				++kplvidx;
 				Client* tc = NULL;
 				int32 key = kplvidx % sz;
 				tc = m_con_map[key];
-				if(tc->isIdle()){
-					tc->keepAlive();
-					++kpcnt;
-				}
+				tc->keepAlive();
 			}
 
 			if(n - lastms > 1000){
@@ -520,8 +503,6 @@ public:
 					<< ", recv_req_success_count:" << Client::recv_req_success_count
 					<< std::endl;
 				lastms = n;
-				cnt = 0;
-				kpcnt = 0;
 			}	
 		}
 	}
