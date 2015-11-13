@@ -236,7 +236,8 @@ public:
 			ret = -200;				
 		}		
 
-		LOG_OUT << "cid:" << m_cid << ", handlePushRequest:" << svreq.payload()
+		LOG_OUT << "cid:" << m_cid << ", handlePushRequest, type:" << svreq.type() 
+			<< ", sn:" << svreq.sn() << ", payload:" << svreq.payload()
 			<< std::endl;
 		PushResponse svresp;
 		svresp.set_sn(svreq.sn());
@@ -525,7 +526,7 @@ private:
 int main(int argc, const char** argv){
 	if(argc < 7){
 		LOG_OUT_NO_SN << "test <addr> <port> <count> "
-			"<cid> <token> <version> \n"
+			"<client_id> <token> <version> \n"
 			<< std::endl;
 		return	0;
 	}
@@ -539,7 +540,7 @@ int main(int argc, const char** argv){
 	std::string token = argv[5];
 	std::string ver = argv[6];
 		
-	std::cout << "addr:" << addr << ", port:" << port << ", cid:" 
+	std::cout << "addr:" << addr << ", port:" << port << ", client_id:" 
 		<< cid << ", token:" << token << ", ver:" << ver
 		<< std::endl;
 

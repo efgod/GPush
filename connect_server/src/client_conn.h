@@ -66,6 +66,14 @@ public:
 	static int connectionCount() {
 		return cnt;
 	}
+
+	static int pushRequestCount() {
+		return req_cnt;
+	} 
+
+	static int pushResponseCount() {
+		return resp_cnt;
+	}
 	
 protected:
 
@@ -91,12 +99,13 @@ private:
 	time_t m_login_time;
 	int m_busy;
 	Sess m_sess;
-	std::string m_key;
 
 	ef::int64 m_req_cnt;
 	ef::int64 m_resp_cnt;
 	
 	static volatile int cnt;
+	static volatile ef::int64 req_cnt;
+	static volatile ef::int64 resp_cnt;
 };
 
 class SendMsgOp: public ef::NetOperator{

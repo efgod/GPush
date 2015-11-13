@@ -59,8 +59,8 @@ void *testfun(void *arg)
 	
 int main(int argc, char **argv)
 {
-	if(argc < 6){
-		cout << "TokenTest <ip> <port> <id> <type> <sn> <payload>\n";
+	if(argc < 8){
+		cout << "PushTest <ip> <port> <client_id> <loop_count> <type> <sn> <payload>\n";
 		return 0;
 	}
 
@@ -68,11 +68,13 @@ int main(int argc, char **argv)
 	ip = argv[1];
 	port = atoi(argv[2]);
 	id = argv[3];
-	type = atoi(argv[4]);
-	sn = argv[5];
-	payload = argv[6];	
+	int cnt = atoi(argv[4]);
+	type = atoi(argv[5]);
+	sn = argv[6];
+	payload = argv[7];	
 
-
-	testfun(NULL);
+	for(int i = 0; i < cnt; ++i){
+		testfun(NULL);
+	}
 	return 0;
 }

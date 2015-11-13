@@ -52,6 +52,8 @@ CliCon::~CliCon(){
 
 
 volatile int CliCon::cnt = 0;
+volatile int64 CliCon::req_cnt = 0;
+volatile int64 CliCon::resp_cnt = 0;
 
 int CliCon::delSession(){
 	TimeRecorder t(__FUNCTION__);
@@ -182,8 +184,6 @@ int CliCon::handleLoginRequest(const head& h, const string& req,
 	decorationName(m_serv->getConfig().ID, getId(), lgreq.id(), sessid);
 	m_sess.set_sessid(sessid);
 
-	m_key = tk + sessid;
-
 
 	for(; i < lgreq.kvs_size(); ++i){
 		*(m_sess.add_kvs()) = lgreq.kvs(i);
@@ -286,9 +286,6 @@ int CliCon::handlePushRequest(const head& h, const string& req,
 
 	PushResponse svresp;
 	PushRequest svreq;
-	string newreq;
-	//decode req
-	string key;
 	string id;
 
 	svresp.set_from_sessid("NULL");
@@ -303,46 +300,28 @@ int CliCon::handlePushRequest(const head& h, const string& req,
 	svresp.set_sn(svreq.sn());
 	svresp.set_status(0);
 
-	//from rpc call,do not check sessid;
-	if(m_sess.type() && svreq.from_sessid() != m_sess.sessid()){
-		ret = INVALID_SESSION_ID;	
+	if(type() < 0){
+		ret = INVALID_TYPE;	
 		goto exit;
 	}
 
-
-
-	svreq.set_from_sessid(m_sess.sessid());
 	svresp.set_to_sessid(svreq.from_sessid());
-
-	if(!svreq.has_to_sessid()){
-		ret = TypeMap::transRequest(svreq);
-		ALogError("ConnectServer")
-			<< "<action:trance_service_request> <from_sessid:"
-			<< svreq.from_sessid() << "> <key:" << key
-			<< "> <sn:" << svreq.sn() << "> <status:" << ret << ">"; 
-		if(ret < 0){
-			svresp.set_status(ret);
-			ret = 0;
-		}
-		goto exit;	
-	}
-
 
 	ret = getConFromSessid(svreq.to_sessid(), l, conid, id);
 	if(ret < 0){
-		svresp.set_status(ret);
-		ret = 0;
+		ret = INVALID_SESSION_ID;
 		goto exit;
 	}
 
-	svreq.SerializeToString(&newreq);
-	op = new SendMsgOp(conid, PUSH_REQ, newreq);	
+	op = new SendMsgOp(conid, PUSH_REQ, req);	
 	ret = l->addAsynOperator(op);
 	if(ret < 0){
 		svresp.set_status(ret);
 		ret = 0;
 		goto exit;
 	}
+
+	ef::atomicIncrement64(&req_cnt);
 
 exit:
 	if(ret < 0){
@@ -394,6 +373,13 @@ int32 CliCon::handlePushResponse(const head& h,
 	//???
 	op = new SendMsgOp(conid, PUSH_RESP, req);
 	ret = l->addAsynOperator(op);
+	if(ret < 0){
+		svresp.set_status(ret);
+		ret = 0;
+		goto exit;
+	}
+
+	ef::atomicIncrement64(&req_cnt);
 exit:
 	ALogError("ConnectServer")  
 		<< "<action:service_response> <sessid:"

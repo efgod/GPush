@@ -258,6 +258,8 @@ int ConnectServer::reportStatus(){
 		return 0;
 	}
 	m_status.Properties["ConnectionCount"] = CliCon::connectionCount();
+	m_status.Properties["PushRequestCount"] = CliCon::pushRequestCount();
+	m_status.Properties["PushResponseCount"] = CliCon::pushResponseCount();
 	m_status.Properties["ReportTimestamp"] = (int)time(NULL);
 
 
