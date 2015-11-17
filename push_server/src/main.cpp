@@ -2,7 +2,6 @@
 #include <iostream>
 #include <signal.h>
 #include <getopt.h>
-#include <dlfcn.h>
 #include "net/ef_sock.h"
 #include "push_server.h"
 #include "base/ef_deamonize.h"
@@ -37,9 +36,6 @@ static void printHelpInfo(){
 		<< std::endl;
 
 }
-
-typedef void* (*CF)(void);
-typedef void  (*DF)(void* );
 
 int main(int argc, char* const* argv){
 
