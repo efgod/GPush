@@ -1,4 +1,6 @@
 #!/bin/bash
+
+
 cp -fr ../proto .
 
 protoc  proto/pair.proto --cpp_out=proto -I=proto

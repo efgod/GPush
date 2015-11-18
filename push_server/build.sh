@@ -1,13 +1,5 @@
 #!/bin/bash
 
-#cd ../efnfw
-#sh build.sh
-#cd -
-
-#cd ../common
-#sh build.sh
-#cd -
-
 protoc  ../proto/pair.proto --cpp_out=./src -I=../proto
 mv -f ./src/pair.pb.cc ./src/pair.pb.cpp
 

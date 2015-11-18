@@ -1,124 +1,187 @@
 #/bin/bash
 
+function check_bin()
+{
+        libname="$1";
+        r=`ls /usr/bin|grep $libname`
+        if [ -n "$r" ]; then
+                return 1;
+        fi
+
+        r=`ls /usr/local/bin|grep $libname`
+        if [ -n "$r" ]; then
+                return 1;
+        fi
+
+        echo "bin $libname do not exit";
+        return 0;
+}
+
+function check_lib()
+{
+	libname="$1";
+	r=`ls /usr/lib|grep $libname`
+	if [ -n "$r" ]; then
+		return 1;
+	fi
+
+	r=`ls /usr/lib64|grep $libname`
+	if [ -n "$r" ]; then
+		return 1;
+	fi
+
+	r=`ls /usr/local/lib|grep $libname`
+	if [ -n "$r" ]; then
+		return 1;
+	fi
+
+	r=`ls /usr/local/lib64|grep $libname`
+	if [ -n "$r" ]; then
+		return 1;
+	fi
+	echo "lib $libname do not exit";
+	return 0;
+}
+
 base_dir=`pwd`
-#1. install protobuf
 
-dst_bin_dir="${HOME}/usr/bin"
-dst_lib_dir="${HOME}/usr/lib"
-dst_inc_dir="${HOME}/usr/include"
+dst_bin_dir="/usr/local/bin"
+dst_lib_dir="/usr/local/lib"
+dst_inc_dir="/usr/local/include"
 
-profile="${HOME}/.bash_profile"
-echo "LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:${dst_lib_dir}" >> ${profile}
-echo "LIBRARY_PATH=\$LIBRARY_PATH:${dst_lib_dir}" >> ${profile}
+echo "checking protobuf..."
+check_lib protobuf
+libret=$?
+check_bin protoc
+binret=$?
+let checkret=$libret*$binret
 
-echo "C_INCLUDE_PATH=${dst_inc_dir}" >> ${profile}
-echo "CPLUS_INCLUDE_PATH=${dst_inc_dir}" >> ${profile}
+if [ $checkret -eq 0 ]; then
+	#1. install protobuf
+	pb_dir="${base_dir}/protobuf-2.6.1"
+	rm -fr $pb_dir
+	echo "Compiling protobuf2.6.1 and installing....."
+	tar xzvf protobuf-2.6.1.tar.gz > /dev/null 
+	cd ${pb_dir} && ./configure --prefix=/usr/local > protobuf.log 2>&1
+	cd ${pb_dir} && make clean >> protobuf.log 2>&1 
+	cd ${pb_dir} && make >> protobuf.log 2>&1 
+	cd ${pb_dir} && sudo make install  >> protobuf.log 2>&1
 
-echo "PATH=\$PATH:${dst_bin_dir}" >> ${profile}
-echo "export LD_LIBRARY_PATH LIBRARY_PATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH PATH" >> ${profile}
+	file=${dst_lib_dir}/libprotobuf.a
+	#check
+	if [ ! -f "$file" ]; then
+		echo "Compile protobuf2.6.1. pls check protobuf.log"
+		exit 0
+	fi
 
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${dst_lib_dir}
-export LIBRARY_PATH=${LIBRARY_PATH}:${dst_lib_dir}
-export C_INCLUDE_PATH=${dst_inc_dir}
-export CPLUS_INCLUDE_PATH=${dst_inc_dir} 
-export PATH=${PATH}:${dst_bin_dir}
-
-source ${profile}
-echo "PATH : ${PATH}"
-
-pb_dir="${base_dir}/protobuf-2.6.1"
-echo "Compiling protobuf2.6.1 and installing....."
-tar xzvf protobuf-2.6.1.tar.gz > /dev/null 
-cd ${pb_dir} && ./configure --prefix=${HOME}/usr/ > protobuf.log 2>&1
-cd ${pb_dir} && make  >> protobuf.log 2>&1 
-cd ${pb_dir} && make install  >> protobuf.log 2>&1
-
-file=${dst_lib_dir}/libprotobuf.a
-#check
-if [ ! -f "$file" ]; then
-  	echo "Compile protobuf2.6.1. pls check protobuf.log"
-	exit 0
+	echo "Compile and install protobuf succeed. install dir on ${dst_lib_dir}"
+else
+	echo "protobuf has been installed."
 fi
 
-echo "Compile and install protobuf succeed. install dir on ${dst_lib_dir}"
+echo "checking redis..."
+check_lib hiredis
+checkret=$?
 
-#2. install redis
-echo "Compiling redis......"
+if [ $checkret -eq 0 ]; then
 
-redis_dir="${base_dir}/redis-2.8.23"
-cd ${base_dir} && tar xzvf redis-2.8.23.tar.gz > /dev/null
-cd ${redis_dir} && make > redis.log 2>&1
+	#2. install redis
+	echo "Compiling redis......"
 
-file=${redis_dir}/src/redis-server
-if [ ! -f "$file" ]; then
-  	echo "Compile redis2.8.3. pls check redis.log"
-	exit 0
+	redis_dir="${base_dir}/redis-2.8.23"
+	rm -fr $redis_dir
+	cd ${base_dir} && tar xzvf redis-2.8.23.tar.gz > /dev/null
+	cd ${redis_dir} && make > redis.log 2>&1
+
+	file=${redis_dir}/src/redis-server
+	if [ ! -f "$file" ]; then
+		echo "Compile redis2.8.3. pls check redis.log"
+		exit 0
+	fi
+
+	hir_inc_dir="${dst_inc_dir}/hiredis"
+	if [ ! -d "${hir_inc_dir}" ]; then
+	  cd ${dst_inc_dir} && mkdir -p hiredis
+	fi
+
+	sudo cp ${redis_dir}/deps/hiredis/hiredis.h ${hir_inc_dir}/
+	sudo cp ${redis_dir}/src/redis-*  ${dst_bin_dir}
+	sudo cp ${redis_dir}/deps/hiredis/libhiredis.a ${dst_lib_dir}
+
+	echo "Compile and install redis successed. install dir on ${dst_lib_dir}"
+else
+	echo "redis has been installed."
+
 fi
 
-hir_inc_dir="${dst_inc_dir}/hiredis"
-if [ ! -d "${hir_inc_dir}" ]; then
-  cd ${dst_inc_dir} && mkdir -p hiredis
+echo "checking zookeeper..."
+check_lib zookeeper 
+checkret=$?
+
+if [ $checkret -eq 0 ]; then
+	#3. install zookeeper
+	zk_dir="${base_dir}/zookeeper-3.4.6"
+
+	rm -fr $zk_dir
+	echo "Compiling zk c client lib....."
+	cd ${base_dir} && tar xzvf zookeeper-3.4.6.tar.gz > /dev/null
+	cd ${zk_dir}/src/c && ./configure --prefix=${HOME}/usr/ > zk.log 2>&1
+	cd ${zk_dir}/src/c && make > zk.log 2>&1
+	cd ${zk_dir}/src/c && make install > zk.log 2>&1
+
+	#check
+	file="${dst_lib_dir}/libzookeeper_mt.a"
+	if [ ! -f "$file" ]; then
+		echo "Compile zookeep c client. pls check zk.log"
+		exit 0
+	fi
+
+	echo "Compile and install zk successed."
+else
+	echo "zookeeper has been installed."
 fi
 
-cp ${redis_dir}/deps/hiredis/hiredis.h ${hir_inc_dir}/
-cp ${redis_dir}/src/redis-*  ${dst_bin_dir}
-cp ${redis_dir}/deps/hiredis/libhiredis.a ${dst_lib_dir}
+echo "checking jsoncpp..."
+check_lib jsoncpp 
+checkret=$?
 
-echo "Compile and install redis successed. install dir on ${dst_lib_dir}"
+if [ $checkret -eq 0 ]; then
+	#4. install scons
+	scons_dir="${base_dir}/scons-2.1.0"
+	rm -fr $scons_dir
+	echo "Install scons....."
+	cd ${base_dir} && tar xzvf scons-2.1.0.tar.gz > /dev/null
+	python ${scons_dir}/setup.py install --prefix=${scons_dir} > scons.log
 
-#3. install zookeeper
-zk_dir="${base_dir}/zookeeper-3.4.6"
+	echo "Install scons successed."
 
-echo "Compiling zk c client lib....."
-cd ${base_dir} && tar xzvf zookeeper-3.4.6.tar.gz > /dev/null
-cd ${zk_dir}/src/c && ./configure --prefix=${HOME}/usr/ > zk.log 2>&1
-cd ${zk_dir}/src/c && make > zk.log 2>&1
-cd ${zk_dir}/src/c && make install > zk.log 2>&1
+	#check
+	file="${dst_lib_dir}/libzookeeper_mt.a"
+	if [ ! -f "$file" ]; then
+		echo "Compile zookeep c client. pls check zk.log"
+		exit 0
+	fi
 
-#check
-file="${dst_lib_dir}/libzookeeper_mt.a"
-if [ ! -f "$file" ]; then
-  	echo "Compile zookeep c client. pls check zk.log"
-	exit 0
+	echo "Compile and install zk succed."
+	#5. install jsoncpp
+	jsoncpp_dir="${base_dir}/jsoncpp-src-0.5.0"
+
+	rm -fr $jsoncpp_dir
+	echo "Compiling jsoncpp lib....."
+	cd ${base_dir} && tar xzvf jsoncpp-src-0.5.0.tar.gz > /dev/null
+	cd $jsoncpp_dir && ${scons_dir}/bin/scons platform=linux-gcc > jsoncpp.log
+	cp -r ${jsoncpp_dir}/include/json ${hir_inc_dir}/
+	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.a ${dst_lib_dir}/libjsoncpp.a
+	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.so ${dst_lib_dir}/libjsoncpp.so
+
+	#check
+	file="${dst_lib_dir}/libjsoncpp_mt.a"
+	if [ ! -f "$file" ]; then
+		echo "Compile jsoncpp. pls check jsoncpp.log"
+		exit 0
+	fi
+
+	echo "Compile and install jsoncpp successed."
+else
+	echo "jsoncpp has been installed."
 fi
-
-echo "Compile and install zk successed."
-
-#4. install scons
-scons_dir="${base_dir}/scons-2.1.0"
-
-echo "Install scons....."
-cd ${base_dir} && tar xzvf scons-2.1.0.tar.gz > /dev/null
-python ${scons_dir}/setup.py install --prefix=${scons_dir} > scons.log
-
-echo "Install scons successed."
-
-#check
-file="${dst_lib_dir}/libzookeeper_mt.a"
-if [ ! -f "$file" ]; then
-  	echo "Compile zookeep c client. pls check zk.log"
-	exit 0
-fi
-
-echo "Compile and install zk succed."
-#5. install jsoncpp
-jsoncpp_dir="${base_dir}/jsoncpp-src-0.5.0"
-
-echo "Compiling jsoncpp lib....."
-cd ${base_dir} && tar xzvf jsoncpp-src-0.5.0.tar.gz > /dev/null
-cd $jsoncpp_dir && ${scons_dir}/bin/scons platform=linux-gcc > jsoncpp.log
-cp -r ${jsoncpp_dir}/include/json ${hir_inc_dir}/
-cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.a ${dst_lib_dir}/libjsoncpp_mt.a
-
-#check
-file="${dst_lib_dir}/libjson_mt.a"
-if [ ! -f "$file" ]; then
-  	echo "Compile jsoncpp. pls check jsoncpp.log"
-	exit 0
-fi
-
-echo "Compile and install jsoncpp successed."
-
-echo "remove so."
-rm -fr ${dst_lib_dir}/*.so*
-
