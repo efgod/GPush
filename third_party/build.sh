@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 function check_bin()
 {
@@ -155,14 +155,6 @@ if [ $checkret -eq 0 ]; then
 
 	echo "Install scons successed."
 
-	#check
-	file="${dst_lib_dir}/libzookeeper_mt.a"
-	if [ ! -f "$file" ]; then
-		echo "Compile zookeep c client. pls check zk.log"
-		exit 0
-	fi
-
-	echo "Compile and install zk succed."
 	#5. install jsoncpp
 	jsoncpp_dir="${base_dir}/jsoncpp-src-0.5.0"
 
