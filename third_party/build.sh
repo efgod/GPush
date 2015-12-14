@@ -125,7 +125,7 @@ if [ $checkret -eq 0 ]; then
 	rm -fr $zk_dir
 	echo "Compiling zk c client lib....."
 	cd ${base_dir} && tar xzvf zookeeper-3.4.6.tar.gz > /dev/null
-	cd ${zk_dir}/src/c && ./configure --prefix=${HOME}/usr/ > zk.log 2>&1
+	cd ${zk_dir}/src/c && ./configure --prefix=/usr/local/ > zk.log 2>&1
 	cd ${zk_dir}/src/c && make > zk.log 2>&1
 	cd ${zk_dir}/src/c && make install > zk.log 2>&1
 
