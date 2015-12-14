@@ -17,7 +17,7 @@ function check_bin()
         return 0;
 }
 
-function check_lib()
+check_lib()
 {
 	libname="$1";
 	r=`ls /usr/lib|grep $libname`
