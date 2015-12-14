@@ -91,7 +91,7 @@ if [ $checkret -eq 0 ]; then
 	redis_dir="${base_dir}/redis-2.8.23"
 	rm -fr $redis_dir
 	cd ${base_dir} && tar xzvf redis-2.8.23.tar.gz > /dev/null
-	cd ${redis_dir} && make > redis.log 2>&1
+	cd ${redis_dir} && make > ${base_dir}/redis.log 2>&1
 
 	file=${redis_dir}/src/redis-server
 	if [ ! -f "$file" ]; then
@@ -126,8 +126,8 @@ if [ $checkret -eq 0 ]; then
 	echo "Compiling zk c client lib....."
 	cd ${base_dir} && tar xzvf zookeeper-3.4.6.tar.gz > /dev/null
 	cd ${zk_dir}/src/c && ./configure --prefix=/usr/local/ > zk.log 2>&1
-	cd ${zk_dir}/src/c && make > zk.log 2>&1
-	cd ${zk_dir}/src/c && make install > zk.log 2>&1
+	cd ${zk_dir}/src/c && make > ${base_dir}/zk.log 2>&1
+	cd ${zk_dir}/src/c && make install > ${base_dir}/zk.log 2>&1
 	mkdir -p ${dst_inc_dir}/zookeeper
 	cp -r ${zk_dir}/src/c/include/* ${dst_inc_dir}/zookeeper/
 
@@ -163,7 +163,7 @@ if [ $checkret -eq 0 ]; then
 	rm -fr $jsoncpp_dir
 	echo "Compiling jsoncpp lib....."
 	cd ${base_dir} && tar xzvf jsoncpp-src-0.5.0.tar.gz > /dev/null
-	cd $jsoncpp_dir && ${scons_dir}/bin/scons platform=linux-gcc > jsoncpp.log
+	cd $jsoncpp_dir && ${scons_dir}/bin/scons platform=linux-gcc > ${base_dir}/jsoncpp.log
 	cp -r ${jsoncpp_dir}/include/json ${dst_inc_dir}/
 	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.a ${dst_lib_dir}/libjsoncpp.a
 	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.so ${dst_lib_dir}/libjsoncpp.so
