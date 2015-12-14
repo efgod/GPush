@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # yum install git
 # yum instal cmake

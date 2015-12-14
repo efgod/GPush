@@ -128,6 +128,8 @@ if [ $checkret -eq 0 ]; then
 	cd ${zk_dir}/src/c && ./configure --prefix=/usr/local/ > zk.log 2>&1
 	cd ${zk_dir}/src/c && make > zk.log 2>&1
 	cd ${zk_dir}/src/c && make install > zk.log 2>&1
+	mkdir -p ${dst_inc_dir}/zookeeper
+	cp -r ${zk_dir}/src/c/include/* ${dst_inc_dir}/zookeeper/
 
 	#check
 	file="${dst_lib_dir}/libzookeeper_mt.a"
@@ -162,7 +164,7 @@ if [ $checkret -eq 0 ]; then
 	echo "Compiling jsoncpp lib....."
 	cd ${base_dir} && tar xzvf jsoncpp-src-0.5.0.tar.gz > /dev/null
 	cd $jsoncpp_dir && ${scons_dir}/bin/scons platform=linux-gcc > jsoncpp.log
-	cp -r ${jsoncpp_dir}/include/json ${hir_inc_dir}/
+	cp -r ${jsoncpp_dir}/include/json ${dst_inc_dir}/
 	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.a ${dst_lib_dir}/libjsoncpp.a
 	cp ${jsoncpp_dir}/libs/linux-gcc*/libjson_linux-gcc*libmt.so ${dst_lib_dir}/libjsoncpp.so
 
